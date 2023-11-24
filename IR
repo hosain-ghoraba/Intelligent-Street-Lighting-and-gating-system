@@ -1,0 +1,24 @@
+// how to read digital GPIO value
+
+#include <stdio.h>
+#include "pico/stdlib.h"
+#include "hardware/gpio.h"
+
+#define IR_PIN 16
+
+int main() {
+    stdio_init_all();
+
+    // Initialize the GPIO pin as input
+    gpio_init(IR_PIN);
+    gpio_set_dir(IR_PIN, GPIO_IN);
+
+    while (1) {
+        // Check if the GPIO pin is high or low
+        int level = gpio_get(IR_PIN);
+        printf("GPIO level: %d\n", level);
+        sleep_ms(1000); // Delay between checks
+    }
+
+    return 0;
+}
