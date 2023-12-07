@@ -8,6 +8,8 @@
 // #include "hardware/irq.h"
 // #include "pico/multicore.h"
 
+// Define GPIO pins for all components
+
 #define RIGHT_SERVO_PIN 1
 #define LEFT_SERVO_PIN 0
 #define Entering_IR_PIN 20
@@ -18,6 +20,7 @@
 
 #define PWM_PERIOD 2000 // Set the PWM period to 2ms
 
+// Function prototypes
 void initiate_Entering_IR();
 void initiate_Leaving_IR();
 void initiate_Photoresistor();
@@ -30,8 +33,10 @@ void close_gate();
 
 int main()
 {
+    // Initialize standard I/O
     stdio_init_all();
 
+    // Initialize all components
     initiate_Entering_IR();
     initiate_Leaving_IR();
     initiate_Photoresistor();
@@ -39,30 +44,33 @@ int main()
     uint slice_num = pwm_gpio_to_slice_num(RGB_PIN);
     initiate_RGB(slice_num);
 
-    ////////////////////////////////////////////////////  for gating system
+    // Gating system variables
     int crossing__start_time = 0;
     bool crossed_entering_IR = false;
     bool crossed_leaving_IR = false;
-    close_gate(); // just to make sure the gate is closed at the beginning if the servo is not in its initial position
+    close_gate(); // Ensure the gate is closed initially
     int iteration_number = 0;
     while (true)
     {
+        // Check if entering IR sensor is triggered
         if (!gpio_get(Entering_IR_PIN))
         {
-            if (!crossed_entering_IR)
+            if (!crossed_entering_IR) // this if statemeent is to prevent the unnecessary execution of the code if the entering IR is already crossed once
             {
                 open_gate();
                 crossed_entering_IR = true;
                 crossing__start_time = time(NULL);
             }
         }
+        // Check if leaving IR sensor is triggered
         if (!gpio_get(Leaving_IR_PIN))
         {
             crossed_leaving_IR = true;
         }
         else
         {
-            if (crossed_leaving_IR)
+            if (crossed_leaving_IR) // Close the gate when leaving IR sensor is no longer triggered , after being triggered once
+
             {
                 close_gate();
                 crossed_entering_IR = false;
@@ -70,6 +78,7 @@ int main()
                 crossing__start_time = 0;
             }
         }
+        // Activate the buzzer if someone stays in the gate for more than 10 seconds
         if (crossed_entering_IR && (time(NULL) - crossing__start_time > 10))
         {
             gpio_put(BUZZER_PIN, 1);
@@ -82,7 +91,8 @@ int main()
         ///////////////////////// for varying the brightness of the LED according to the photoresistor
         uint16_t raw_value = adc_read();
         float voltage = raw_value * 3.3f / (1 << 12); // Convert raw value to voltage
-        play_with_LED_with_photoresistance((int)(voltage / 3.3 * 100.0), slice_num);
+        int light_intensity_percentage = (int)(voltage / 3.3 * 100.0);
+        set_led_brightness(slice_num, light_intensity_percentage);
 
         //////////////////// printings
         printf("iteration number: %d\n", iteration_number);
@@ -98,7 +108,7 @@ int main()
         printf("\n");
 
         iteration_number++;
-        sleep_ms(1000);
+        sleep_ms(500);
     }
 }
 
@@ -147,12 +157,6 @@ void set_led_brightness(uint slice_num, uint percent)
     // Set the PWM duty cycle for the LED
     pwm_set_chan_level(slice_num, PWM_CHAN_A, duty_cycle);
 }
-void play_with_LED_with_photoresistance(int percent, uint slice_num)
-{
-    set_led_brightness(slice_num, percent);
-    sleep_ms(10);
-}
-
 void open_gate()
 {
     // Pulse width for 90 degrees on the right servo
